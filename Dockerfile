@@ -21,7 +21,7 @@ RUN chown -R www-data /defaults/wordpress
 
 # fix locales
 RUN apt update
-RUN apt install -y locales
+RUN apt install -y locales --no-install-recommends
 
 # set environment variables
 ARG DEBIAN_FRONTEND="noninteractive"
@@ -33,11 +33,10 @@ ENV LANGUAGE="en_US.UTF-8" \
 RUN locale-gen en_US.UTF-8
 
 # install apache/'wordpress dependencies'
-RUN apt install -y \
+RUN apt install -y --no-install-recommends \
     apache2 \
     ghostscript \
     libapache2-mod-php \
-    mysql-server \
     php \
     php-bcmath \
     php-curl \
@@ -48,6 +47,13 @@ RUN apt install -y \
     php-mysql \
     php-xml \
     php-zip
+
+# clean up
+RUN apt-get -y autoremove && \
+    rm -rf \
+        /tmp/* \
+        /var/lib/apt/lists/* \
+        /var/tmp/*
 
 # set apache user/group
 ENV APACHE_RUN_USER www-data

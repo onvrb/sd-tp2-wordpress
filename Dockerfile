@@ -1,15 +1,14 @@
-# download wordpress
 FROM alpine:3.12 as wordpress-stage
 
+# download wordpress
 RUN apk add --no-cache \
     bash \
     curl \
-    xz
-
-RUN mkdir /wordpress
-RUN curl -o /latest.tar.gz -L \
-    https://wordpress.org/latest.tar.gz
-RUN tar xf \
+    xz && \
+    mkdir /wordpress && \
+    curl -o /latest.tar.gz -L \
+    https://wordpress.org/latest.tar.gz && \
+    tar xf \
     /latest.tar.gz -C \
     /wordpress
 
@@ -17,9 +16,8 @@ RUN tar xf \
 FROM ghcr.io/onvrb/sd-tp2-ubuntu-baseimage:master
 
 # get wordpress from other stage
-RUN mkdir -p /config/wordpress
-COPY --from=wordpress-stage /wordpress /config
-RUN chown -R www-data /config/wordpress
+COPY --from=wordpress-stage /wordpress /defaults
+RUN chown -R www-data /defaults/wordpress
 
 # fix locales
 RUN apt update
@@ -34,7 +32,7 @@ ENV LANGUAGE="en_US.UTF-8" \
     LC_ALL=en_US.UTF-8
 RUN locale-gen en_US.UTF-8
 
-# install wordpress dependencies
+# install apache/'wordpress dependencies'
 RUN apt install -y \
     apache2 \
     ghostscript \
@@ -51,22 +49,24 @@ RUN apt install -y \
     php-xml \
     php-zip
 
-# setup apache
+# set apache user/group
 ENV APACHE_RUN_USER www-data
 ENV APACHE_RUN_GROUP www-data
-
-# add local files
-COPY root/ /
-
-RUN a2ensite wordpress && \
-    a2enmod rewrite && \
-    a2dissite 000-default
 
 # ports and volume
 EXPOSE 80
 VOLUME [ "/config" ]
 
-RUN echo 'ServerName localhost' >> \
-    /etc/apache2/apache2.conf
+# add local files
+COPY root/ /
 
-CMD /usr/sbin/apache2ctl -D FOREGROUND
+# setup apache
+WORKDIR /app
+RUN a2ensite wordpress && \
+    a2enmod rewrite && \
+    a2dissite 000-default && \
+    echo 'ServerName localhost' >> \
+        /etc/apache2/apache2.conf && \
+    chmod +x init.sh
+
+ENTRYPOINT ["./init.sh"]
